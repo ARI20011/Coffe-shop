@@ -51,6 +51,8 @@ class AccountAndCartTest extends TestCase
             ->assertOk()
             ->assertSee($user->name)
             ->assertSee($user->email);
+        $this->assertNotNull($user->fresh()->last_login_at);
+        $this->assertDatabaseHas('users', ['id' => $user->id, 'role' => 'pelanggan']);
 
         $this->post(route('cart.store'), ['menu_id' => 1])->assertRedirect();
         $this->post(route('cart.store'), ['menu_id' => 1])->assertRedirect();
@@ -87,6 +89,7 @@ class AccountAndCartTest extends TestCase
     {
         $response = $this->post(route('register.store'), [
             'name' => 'Kopi Customer',
+            'username' => 'kopi-customer',
             'email' => 'new@example.com',
             'password' => 'secure-pass-123',
             'password_confirmation' => 'secure-pass-123',
@@ -97,7 +100,11 @@ class AccountAndCartTest extends TestCase
         $response->assertRedirect(route('login'));
         $response->assertSessionHas('status');
         $this->assertGuest();
-        $this->assertDatabaseHas('users', ['email' => 'new@example.com']);
+        $this->assertDatabaseHas('users', [
+            'email' => 'new@example.com',
+            'username' => 'kopi-customer',
+            'role' => 'pelanggan',
+        ]);
 
         $this->post(route('login.store'), [
             'email' => 'new@example.com',
@@ -111,6 +118,7 @@ class AccountAndCartTest extends TestCase
     {
         $this->post(route('register.store'), [
             'name' => 'Kopi Customer',
+            'username' => 'kopi-customer',
             'email' => 'new@example.com',
             'password' => 'secure-pass-123',
             'password_confirmation' => 'secure-pass-123',
@@ -119,6 +127,34 @@ class AccountAndCartTest extends TestCase
 
         $this->assertDatabaseMissing('users', ['email' => 'new@example.com']);
         $this->assertGuest();
+    }
+
+    public function test_customer_can_checkout_and_view_order_history_on_profile(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user)->withSession(['cart' => [1 => 2, 2 => 1]]);
+
+        $this->post(route('cart.checkout'))
+            ->assertRedirect(route('profile.show'))
+            ->assertSessionMissing('cart');
+
+        $this->assertDatabaseHas('transaksi', [
+            'id_pelanggan' => $user->id,
+            'total_harga' => 51000,
+            'status_pesanan' => 'menunggu',
+        ]);
+        $this->assertDatabaseHas('detail_transaksi', [
+            'nama_produk' => 'Kopi Susu Kala',
+            'jumlah' => 2,
+            'subtotal_harga' => 36000,
+        ]);
+
+        $this->get(route('profile.show'))
+            ->assertOk()
+            ->assertSee('Riwayat checkout')
+            ->assertSee('Kopi Susu Kala')
+            ->assertSee('Rp 51.000')
+            ->assertSee('Pelanggan');
     }
 
     public function test_failed_login_does_not_authenticate_customer(): void

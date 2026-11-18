@@ -70,6 +70,7 @@ class AuthController extends Controller
 
         RateLimiter::clear($failedAttemptsKey);
         RateLimiter::clear($lockKey);
+        $request->user()->forceFill(['last_login_at' => now()])->save();
         $request->session()->regenerate();
 
         if ($request->input('next') === 'home') {
@@ -85,12 +86,15 @@ class AuthController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'username' => ['required', 'string', 'max:100', 'unique:users,username'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'confirmed', Password::min(8)],
             'terms' => ['accepted'],
             'captcha' => ['accepted'],
         ], [
             'name.required' => 'Nama lengkap wajib diisi.',
+            'username.required' => 'Username wajib diisi.',
+            'username.unique' => 'Username ini sudah digunakan.',
             'email.required' => 'Alamat email wajib diisi.',
             'email.email' => 'Masukkan alamat email yang valid.',
             'email.unique' => 'Alamat email ini sudah terdaftar.',
@@ -103,8 +107,10 @@ class AuthController extends Controller
 
         User::create([
             'name' => $validated['name'],
+            'username' => $validated['username'],
             'email' => $validated['email'],
             'password' => $validated['password'],
+            'role' => 'pelanggan',
         ]);
 
         return redirect()

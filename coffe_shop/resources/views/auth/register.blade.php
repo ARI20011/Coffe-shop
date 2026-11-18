@@ -40,6 +40,12 @@
                         <span class="field-error" role="alert">{{ $message }}</span>
                     @enderror
 
+                    <label for="username">Username</label>
+                    <input id="username" name="username" type="text" value="{{ old('username') }}" placeholder="Username pilihanmu" autocomplete="username" maxlength="100" required>
+                    @error('username')
+                        <span class="field-error" role="alert">{{ $message }}</span>
+                    @enderror
+
                     <label for="email">Alamat email</label>
                     <input id="email" name="email" type="email" value="{{ old('email') }}" placeholder="kamu@email.com" autocomplete="email" required>
                     @error('email')

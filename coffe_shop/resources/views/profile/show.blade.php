@@ -27,14 +27,60 @@
         </section>
     @else
         <section class="account-card profile-card">
-            <div class="profile-card__avatar" aria-hidden="true">{{ mb_strtoupper(mb_substr($user->name, 0, 1)) }}</div>
+            <div class="profile-card__avatar" aria-hidden="true">{{ mb_strtoupper(mb_substr($user->username ?: $user->name, 0, 1)) }}</div>
             <div class="profile-card__info">
                 <p class="eyebrow">Profil pelanggan</p>
                 <h2>{{ $user->name }}</h2>
-                <p>{{ $user->email }}</p>
+                <dl class="profile-details">
+                    <div><dt>Username</dt><dd>{{ $user->username ?: $user->name }}</dd></div>
+                    <div><dt>Email</dt><dd>{{ $user->email }}</dd></div>
+                    <div><dt>Role</dt><dd>{{ ucfirst($user->role) }}</dd></div>
+                    <div>
+                        <dt>Login terakhir</dt>
+                        <dd>{{ $user->last_login_at?->format('d M Y, H:i') ?? 'Belum pernah login' }}</dd>
+                    </div>
+                </dl>
                 <span>Bergabung sejak {{ $user->created_at->format('d M Y') }}</span>
             </div>
             <a class="button button--profile-outline" href="{{ route('cart.index') }}">Lihat keranjang</a>
+        </section>
+
+        <section class="profile-history" aria-labelledby="profile-history-title">
+            <div class="profile-history__heading">
+                <p class="eyebrow">Pesanan tersimpan</p>
+                <h2 id="profile-history-title">Riwayat checkout</h2>
+            </div>
+            @forelse ($transactions as $transaction)
+                <article class="profile-order">
+                    <header class="profile-order__header">
+                        <div>
+                            <h3>Pesanan #{{ $transaction->id_transaksi }}</h3>
+                            <time datetime="{{ \Illuminate\Support\Carbon::parse($transaction->tanggal_transaksi)->toAtomString() }}">
+                                {{ \Illuminate\Support\Carbon::parse($transaction->tanggal_transaksi)->format('d M Y, H:i') }}
+                            </time>
+                        </div>
+                        <span class="profile-order__status">{{ ucfirst($transaction->status_pesanan) }}</span>
+                    </header>
+                    <ul>
+                        @foreach ($detailsByTransaction->get($transaction->id_transaksi, collect()) as $detail)
+                            <li>
+                                <span>{{ $detail->nama_produk }} × {{ $detail->jumlah }}</span>
+                                <strong>Rp {{ number_format($detail->subtotal_harga, 0, ',', '.') }}</strong>
+                            </li>
+                        @endforeach
+                    </ul>
+                    <footer>
+                        <span>Total</span>
+                        <strong>Rp {{ number_format($transaction->total_harga, 0, ',', '.') }}</strong>
+                    </footer>
+                </article>
+            @empty
+                <div class="account-card profile-history__empty">
+                    <h3>Belum ada checkout</h3>
+                    <p>Pesanan yang sudah di-checkout akan muncul di sini.</p>
+                    <a class="button button--brown" href="{{ route('catalog.index') }}#menu">Lihat menu</a>
+                </div>
+            @endforelse
         </section>
 
         <form method="POST" action="{{ route('logout') }}" class="logout-form">

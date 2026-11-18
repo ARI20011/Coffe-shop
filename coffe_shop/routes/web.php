@@ -30,5 +30,6 @@ Route::get('/keranjang.php', [CartController::class, 'index'])->name('cart.index
 Route::middleware('auth')->group(function () {
     Route::post('/keranjang/tambah', [CartController::class, 'store'])->name('cart.store');
     Route::post('/keranjang/perbarui', [CartController::class, 'update'])->name('cart.update');
+    Route::post('/keranjang/checkout', [CartController::class, 'checkout'])->name('cart.checkout');
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 });

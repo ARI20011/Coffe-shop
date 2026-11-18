@@ -12,7 +12,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('transaksi', function (Blueprint $table) {
-            $table->id();
+            $table->id('id_transaksi');
+            $table->foreignId('id_pelanggan')->constrained('users')->cascadeOnDelete();
+            $table->foreignId('id_kasir')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('id_meja')->nullable()->constrained('meja', 'id_meja')->nullOnDelete();
+            $table->dateTime('tanggal_transaksi');
+            $table->unsignedBigInteger('total_harga');
+            $table->string('status_pesanan', 30)->default('menunggu');
             $table->timestamps();
         });
     }

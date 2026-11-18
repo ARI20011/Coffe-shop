@@ -1578,10 +1578,28 @@ button {
     font-size: 1.55rem;
 }
 
-.profile-card__info > p:not(.eyebrow) {
-    margin: 0;
+.profile-details {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.7rem 1.4rem;
+    margin: 0.9rem 0 0;
+}
+
+.profile-details > div {
+    min-width: 0;
+}
+
+.profile-details dt {
+    color: var(--color-muted);
+    font-size: 0.68rem;
+}
+
+.profile-details dd {
+    margin: 0.15rem 0 0;
+    overflow-wrap: anywhere;
     color: #62574f;
-    font-size: 0.9rem;
+    font-size: 0.84rem;
+    font-weight: 600;
 }
 
 .profile-card__info > span {
@@ -1589,6 +1607,98 @@ button {
     margin-top: 0.5rem;
     color: var(--color-muted);
     font-size: 0.74rem;
+}
+
+.profile-history {
+    display: grid;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+.profile-history__heading h2 {
+    margin: 0.3rem 0 0;
+    font-family: var(--font-display);
+    font-size: 1.65rem;
+}
+
+.profile-order {
+    padding: 1.3rem 1.5rem;
+    border: 1px solid #e8dfd3;
+    border-radius: 1rem;
+    background: var(--color-paper);
+}
+
+.profile-order__header,
+.profile-order footer,
+.profile-order li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.profile-order__header h3 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 1.05rem;
+}
+
+.profile-order__header time {
+    color: var(--color-muted);
+    font-size: 0.75rem;
+}
+
+.profile-order__status {
+    padding: 0.35rem 0.65rem;
+    border-radius: 999px;
+    background: #f2e9df;
+    color: var(--color-brown);
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.profile-order ul {
+    display: grid;
+    gap: 0.55rem;
+    margin: 1rem 0;
+    padding: 0;
+    list-style: none;
+}
+
+.profile-order li {
+    color: #62574f;
+    font-size: 0.82rem;
+}
+
+.profile-order footer {
+    padding-top: 0.8rem;
+    border-top: 1px solid #eee6dc;
+    font-size: 0.85rem;
+}
+
+.profile-history__empty {
+    padding: 1.5rem;
+}
+
+.profile-history__empty h3 {
+    margin: 0;
+    font-family: var(--font-display);
+}
+
+.profile-history__empty p {
+    color: var(--color-muted);
+}
+
+.cart-page-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.7rem;
+    margin-bottom: 1.3rem;
+}
+
+.cart-page-actions form {
+    margin: 0;
 }
 
 .logout-form {
@@ -2056,6 +2166,14 @@ button {
 
     .profile-card > .button {
         margin-left: 4.1rem;
+    }
+
+    .profile-details {
+        grid-template-columns: 1fr;
+    }
+
+    .profile-order {
+        padding: 1rem;
     }
 
     .cart-page-list {

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Support\MenuCatalog;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -86,5 +87,64 @@ class CartController extends Controller
         $request->session()->put('cart', $cart);
 
         return back()->with('status', 'Keranjang berhasil diperbarui.');
+    }
+
+    public function checkout(Request $request): RedirectResponse
+    {
+        $cart = $request->session()->get('cart', []);
+        if (! is_array($cart) || $cart === []) {
+            return back()->withErrors(['cart' => 'Keranjang masih kosong.']);
+        }
+
+        $items = [];
+        foreach ($cart as $menuId => $quantity) {
+            $item = $this->menuCatalog->find((int) $menuId);
+            $quantity = filter_var($quantity, FILTER_VALIDATE_INT);
+
+            if ($item === null || $quantity === false || $quantity < 1 || $quantity > $item['stok_realtime']) {
+                return back()->withErrors(['cart' => 'Ada menu dengan jumlah atau stok yang tidak valid.']);
+            }
+
+            $item['jumlah'] = $quantity;
+            $item['subtotal'] = $item['harga'] * $quantity;
+            $items[] = $item;
+        }
+
+        $total = array_sum(array_column($items, 'subtotal'));
+        $transactionId = DB::transaction(function () use ($request, $items, $total): int {
+            $transactionId = DB::table('transaksi')->insertGetId([
+                'id_pelanggan' => $request->user()->getKey(),
+                'tanggal_transaksi' => now(),
+                'total_harga' => $total,
+                'status_pesanan' => 'menunggu',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ], 'id_transaksi');
+
+            foreach ($items as $item) {
+                $productId = DB::table('produk')
+                    ->where('nama_produk', $item['nama_menu'])
+                    ->value('id_produk');
+
+                DB::table('detail_transaksi')->insert([
+                    'id_transaksi' => $transactionId,
+                    'id_produk' => $productId,
+                    'nama_produk' => $item['nama_menu'],
+                    'harga_satuan' => $item['harga'],
+                    'jumlah' => $item['jumlah'],
+                    'subtotal_harga' => $item['subtotal'],
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
+            return $transactionId;
+        });
+
+        $request->session()->forget('cart');
+
+        return redirect()
+            ->route('profile.show')
+            ->with('status', "Checkout berhasil. Nomor pesanan #{$transactionId} tersimpan di riwayat profil.");
     }
 }

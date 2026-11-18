@@ -71,7 +71,13 @@
                     <span>Total pesanan</span>
                     <strong>Rp {{ number_format($total, 0, ',', '.') }}</strong>
                 </div>
-                <a class="button button--brown cart-continue" href="{{ route('catalog.index') }}#menu">Lanjut belanja <span aria-hidden="true">→</span></a>
+                <div class="cart-page-actions">
+                    <a class="button button--profile-outline" href="{{ route('catalog.index') }}#menu">Lanjut belanja</a>
+                    <form method="POST" action="{{ route('cart.checkout') }}">
+                        @csrf
+                        <button class="button button--brown" type="submit">Checkout</button>
+                    </form>
+                </div>
             </section>
         @else
             <section class="account-card guest-card">

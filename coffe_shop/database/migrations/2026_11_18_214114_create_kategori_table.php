@@ -12,7 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('kategori', function (Blueprint $table) {
-            $table->id();
+            $table->id('id_kategori');
+            $table->string('nama_kategori', 100)->unique();
             $table->timestamps();
         });
     }
@@ -25,4 +26,3 @@ return new class extends Migration
         Schema::dropIfExists('kategori');
     }
 };
-
