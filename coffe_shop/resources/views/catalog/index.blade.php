@@ -3,27 +3,14 @@
 @section('title', 'Kopi untuk Harimu')
 
 @section('content')
-<main
-    x-data="{
-        tipePesanan: 'Take Away',
-        keranjang: [],
-        tambah(item) {
-            if (item.stok_realtime <= 0) return;
-            const ada = this.keranjang.find(row => row.id_menu === item.id_menu);
-            if (ada) ada.jumlah++;
-            else this.keranjang.push({ ...item, jumlah: 1 });
-        },
-        kurang(item) {
-            const ada = this.keranjang.find(row => row.id_menu === item.id_menu);
-            if (!ada) return;
-            ada.jumlah--;
-            if (ada.jumlah <= 0) this.keranjang = this.keranjang.filter(row => row.id_menu !== item.id_menu);
-        },
-        get total() {
-            return this.keranjang.reduce((sum, item) => sum + (item.harga * item.jumlah), 0);
-        }
-    }"
->
+<main>
+    @if (session('status'))
+        <p class="form-notice form-notice--success" role="status">{{ session('status') }}</p>
+    @endif
+    @error('cart')
+        <p class="form-notice form-notice--error" role="alert">{{ $message }}</p>
+    @enderror
+
     <section class="hero" id="home">
         <div class="hero__copy">
             <p class="eyebrow eyebrow--light"><span></span> Fresh batch roasted today</p>
@@ -91,13 +78,17 @@
                             <h3>{{ $item['nama_menu'] }}</h3>
                             <p class="menu-card__price">Rp {{ number_format($item['harga'], 0, ',', '.') }}</p>
                         </div>
-                        <button
-                            type="button"
-                            class="add-button"
-                            aria-label="Tambah {{ $item['nama_menu'] }} ke keranjang"
-                            @click="tambah(@js($item))"
-                            @disabled($item['stok_realtime'] === 0)
-                        ><span aria-hidden="true">+</span></button>
+                        <form method="POST" action="{{ route('cart.store') }}">
+                            @csrf
+                            <input type="hidden" name="menu_id" value="{{ $item['id_menu'] }}">
+                            <button
+                                type="submit"
+                                class="add-button"
+                                aria-label="Tambah {{ $item['nama_menu'] }} ke keranjang"
+                                @guest onclick="alert('login dulu'); window.location.href = '{{ route('login', ['next' => 'home']) }}'; return false;" @endguest
+                                @disabled($item['stok_realtime'] === 0)
+                            ><span aria-hidden="true">+</span></button>
+                        </form>
                     </div>
                 </article>
             @empty
@@ -108,59 +99,6 @@
             @endforelse
         </div>
 
-        <section class="cart-panel" aria-label="Keranjang pesanan">
-            <div class="cart-panel__intro">
-                <p class="eyebrow">Pesananmu</p>
-                <h3>Siap untuk dinikmati?</h3>
-                <p>Pilih cara menikmati kopi favoritmu.</p>
-                <div class="order-toggle" role="group" aria-label="Tipe pesanan">
-                    <button type="button" @click="tipePesanan = 'Take Away'" :class="{ 'is-active': tipePesanan === 'Take Away' }">Take Away</button>
-                    <button type="button" @click="tipePesanan = 'Dine-in'" :class="{ 'is-active': tipePesanan === 'Dine-in' }">Dine-in</button>
-                </div>
-                <div x-show="tipePesanan === 'Dine-in'" x-cloak class="dine-in-fields">
-                    <label>Meja
-                        <select>
-                            <option value="">Pilih meja</option>
-                            <option>Meja 01</option>
-                            <option>Meja 02</option>
-                        </select>
-                    </label>
-                    <label>Jam datang <input type="time"></label>
-                </div>
-            </div>
-
-            <div class="cart-panel__content">
-                <div class="cart-panel__title">
-                    <h3>Keranjang</h3>
-                    <span class="cart-count" x-text="keranjang.reduce((sum, item) => sum + item.jumlah, 0)"></span>
-                </div>
-                <div class="cart-items">
-                    <template x-if="keranjang.length === 0">
-                        <p class="cart-empty">Keranjangmu masih kosong. Yuk, pilih menu favorit!</p>
-                    </template>
-                    <template x-for="item in keranjang" :key="item.id_menu">
-                        <div class="cart-item">
-                            <div>
-                                <strong x-text="item.nama_menu"></strong>
-                                <span x-text="'Rp ' + new Intl.NumberFormat('id-ID').format(item.harga)"></span>
-                            </div>
-                            <div class="quantity-control">
-                                <button type="button" @click="kurang(item)" :aria-label="'Kurangi ' + item.nama_menu">−</button>
-                                <span x-text="item.jumlah"></span>
-                                <button type="button" @click="tambah(item)" :disabled="item.jumlah >= item.stok_realtime" :aria-label="'Tambah ' + item.nama_menu">+</button>
-                            </div>
-                        </div>
-                    </template>
-                </div>
-                <div class="cart-total">
-                    <span>Total pesanan</span>
-                    <strong x-text="'Rp ' + new Intl.NumberFormat('id-ID').format(total)"></strong>
-                </div>
-                <button type="button" class="button button--brown checkout-button" :disabled="keranjang.length === 0">
-                    Lanjutkan Pesanan <span aria-hidden="true">→</span>
-                </button>
-            </div>
-        </section>
     </section>
 
     <section class="about-section" id="about">
