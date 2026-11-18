@@ -10,7 +10,12 @@
 <body class="auth-page">
     <main class="auth-shell">
         <section class="auth-story">
-            <img src="{{ Vite::asset('resources/img/barista.png') }}" alt="" class="auth-story__image">
+            <img src="{{ asset('images/login-barista.png') }}" alt="" class="auth-story__image">
+            <a class="auth-admin-switch" href="{{ route('admin.login') }}" data-auth-flip aria-label="Masuk sebagai admin atau kasir">
+                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
+                    <path d="M5 12h14m-6-6 6 6-6 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </a>
             <a href="{{ route('catalog.index') }}" class="auth-brand">
                 <span class="brand__mark" aria-hidden="true">K</span>
                 <span class="brand__name">Kopi Kala Aira<small>ARTISAN ROASTERY</small></span>

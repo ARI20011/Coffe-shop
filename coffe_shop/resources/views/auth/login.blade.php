@@ -10,7 +10,7 @@
 <body class="auth-page">
     <main class="auth-shell">
         <section class="auth-story">
-            <img src="{{ Vite::asset('resources/img/barista.png') }}" alt="" class="auth-story__image">
+            <img src="{{ asset('images/login-barista.png') }}" alt="" class="auth-story__image">
             <a href="{{ route('catalog.index') }}" class="auth-brand">
                 <span class="brand__mark" aria-hidden="true">K</span>
                 <span class="brand__name">Kopi Kala Aira<small>ARTISAN ROASTERY</small></span>
