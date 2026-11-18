@@ -4,20 +4,28 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'Kopi Kala Aira') · Kopi Kala Aira</title>
+    <meta name="theme-color" content="#48291b">
+    <title>@yield('title', 'Beranda') · Kopi Kala Aira</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
-<body class="min-h-screen bg-stone-50 text-stone-950">
-    <header class="border-b border-stone-200 bg-white">
-        <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6">
-            <a href="{{ route('catalog.index') }}" class="font-bold tracking-tight">Kopi Kala Aira</a>
-            <a href="{{ route('catalog.index', ['kategori' => 'Semua']) }}" class="text-sm font-semibold text-stone-600">Menu Pelanggan</a>
+<body>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <a href="{{ route('catalog.index') }}" class="brand" aria-label="Kopi Kala Aira, beranda">
+                <span class="brand__mark" aria-hidden="true">K</span>
+                <span class="brand__name">Kopi Kala Aira<small>ARTISAN ROASTERY</small></span>
+            </a>
+            <nav class="site-nav" aria-label="Navigasi utama">
+                <a href="#home">Home</a>
+                <a href="#menu">Menu</a>
+                <a href="#about">Tentang Kami</a>
+                <a href="#promo">Promo Spesial</a>
+            </nav>
+            <a class="header-contact" href="#footer">Kontak <span aria-hidden="true">↗</span></a>
         </div>
     </header>
 
-    <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
-        @yield('content')
-    </div>
+    @yield('content')
 </body>
 </html>

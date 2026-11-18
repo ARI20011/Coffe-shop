@@ -11,9 +11,12 @@ class CatalogTest extends TestCase
         $response = $this->get(route('catalog.index'));
 
         $response->assertOk();
-        $response->assertSee('Katalog Menu');
+        $response->assertSee('Popular Brews');
+        $response->assertSee('Kopi yang diracik');
+        $response->assertSee('Kenapa memilih kami');
+        $response->assertSee('Dapatkan diskon 30%');
         $response->assertSee('Rp 18.000');
-        $response->assertSee('Stok Menipis');
+        $response->assertSee('Stok menipis');
         $response->assertSee('Habis');
         $response->assertSee('Tambah');
     }
