@@ -77,6 +77,9 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 
     Route::get('/stok', [AdminStockController::class, 'index'])->name('stock.index');
     Route::put('/stok/{productId}', [AdminStockController::class, 'update'])->whereNumber('productId')->name('stock.update');
+    Route::post('/stok/bahan', [AdminStockController::class, 'storeIngredient'])->name('stock.ingredients.store');
+    Route::put('/stok/bahan/{ingredientId}', [AdminStockController::class, 'updateIngredient'])->whereNumber('ingredientId')->name('stock.ingredients.update');
+    Route::delete('/stok/bahan/{ingredientId}', [AdminStockController::class, 'destroyIngredient'])->whereNumber('ingredientId')->name('stock.ingredients.destroy');
     Route::get('/stok/laporan.csv', [AdminStockController::class, 'report'])->name('stock.report');
 });
 

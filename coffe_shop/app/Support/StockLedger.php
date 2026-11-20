@@ -10,11 +10,13 @@ class StockLedger
     private const MOVEMENTS = ['stok_awal', 'pembelian', 'pembatalan', 'penyesuaian_masuk', 'penyesuaian_keluar'];
 
     public function record(
-        int $productId,
+        ?int $productId,
         string $productName,
         string $movement,
         int $quantity,
         ?int $actorId,
+        string $unit = 'pcs',
+        ?int $ingredientId = null,
     ): void {
         if (! in_array($movement, self::MOVEMENTS, true) || $quantity < 1) {
             throw new InvalidArgumentException('Pergerakan stok atau jumlah tidak valid.');
@@ -22,10 +24,11 @@ class StockLedger
 
         DB::table('riwayat_stok')->insert([
             'id_produk' => $productId,
+            'id_bahan' => $ingredientId,
             'nama_bahan' => $productName,
             'tipe_pergerakan' => $movement,
             'jumlah' => $quantity,
-            'satuan' => 'pcs',
+            'satuan' => $unit,
             'tanggal_catat' => now(),
             'id_admin' => $actorId,
             'created_at' => now(),

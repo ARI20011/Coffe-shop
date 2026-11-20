@@ -7,6 +7,7 @@ use Illuminate\Database\Query\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -37,6 +38,7 @@ class AdminStockController extends Controller
 
         return view('dashboard.stock', [
             'products' => $products->orderBy('produk.nama_produk')->paginate(15)->withQueryString(),
+            'ingredients' => DB::table('bahan_baku')->orderBy('nama_bahan')->orderBy('ukuran')->get(),
             'categories' => DB::table('kategori')->orderBy('nama_kategori')->pluck('nama_kategori'),
             'filters' => $filters,
             'history' => DB::table('riwayat_stok')
@@ -83,6 +85,117 @@ class AdminStockController extends Controller
         });
 
         return redirect()->route('admin.stock.index')->with('status', 'Stok produk berhasil diperbarui.');
+    }
+
+    public function storeIngredient(Request $request): RedirectResponse
+    {
+        return $this->saveIngredient($request);
+    }
+
+    public function updateIngredient(Request $request, int $ingredientId): RedirectResponse
+    {
+        return $this->saveIngredient($request, $ingredientId);
+    }
+
+    public function destroyIngredient(Request $request, int $ingredientId): RedirectResponse
+    {
+        DB::transaction(function () use ($request, $ingredientId): void {
+            $ingredient = DB::table('bahan_baku')
+                ->where('id_bahan', $ingredientId)
+                ->lockForUpdate()
+                ->first();
+            abort_if($ingredient === null, 404);
+
+            if ((int) $ingredient->stok > 0) {
+                $this->stockLedger->record(
+                    null,
+                    $ingredient->nama_bahan,
+                    'penyesuaian_keluar',
+                    (int) $ingredient->stok,
+                    (int) $request->user()->getKey(),
+                    'kemasan',
+                    $ingredientId,
+                );
+            }
+
+            DB::table('bahan_baku')->where('id_bahan', $ingredientId)->delete();
+        });
+
+        return redirect()->route('admin.stock.index')->with('status', 'Bahan baku berhasil dihapus.');
+    }
+
+    private function saveIngredient(Request $request, ?int $ingredientId = null): RedirectResponse
+    {
+        $validated = $request->validate([
+            'nama_bahan' => ['required', 'string', 'max:150'],
+            'ukuran' => ['required', 'string', 'max:30'],
+            'stok' => ['required', 'integer', 'min:0', 'max:1000000'],
+        ]);
+        $name = trim($validated['nama_bahan']);
+        $size = trim($validated['ukuran']);
+        if ($name === '' || $size === '') {
+            throw ValidationException::withMessages([
+                'nama_bahan' => 'Nama dan ukuran bahan baku wajib diisi.',
+            ]);
+        }
+
+        $duplicate = DB::table('bahan_baku')
+            ->where('nama_bahan', $name)
+            ->where('ukuran', $size)
+            ->when($ingredientId !== null, fn ($query) => $query->where('id_bahan', '!=', $ingredientId))
+            ->exists();
+        if ($duplicate) {
+            throw ValidationException::withMessages([
+                'nama_bahan' => 'Bahan baku dengan nama dan ukuran tersebut sudah terdaftar.',
+            ]);
+        }
+
+        DB::transaction(function () use ($request, $ingredientId, $name, $size, $validated): void {
+            $existing = $ingredientId === null
+                ? null
+                : DB::table('bahan_baku')->where('id_bahan', $ingredientId)->lockForUpdate()->first();
+            abort_if($ingredientId !== null && $existing === null, 404);
+
+            $stock = (int) $validated['stok'];
+            $now = now();
+            if ($existing === null) {
+                $savedId = DB::table('bahan_baku')->insertGetId([
+                    'nama_bahan' => $name,
+                    'ukuran' => $size,
+                    'stok' => $stock,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ], 'id_bahan');
+                $difference = $stock;
+                $movementName = $name;
+                $movementType = 'stok_awal';
+            } else {
+                DB::table('bahan_baku')->where('id_bahan', $ingredientId)->update([
+                    'nama_bahan' => $name,
+                    'ukuran' => $size,
+                    'stok' => $stock,
+                    'updated_at' => $now,
+                ]);
+                $savedId = $ingredientId;
+                $difference = $stock - (int) $existing->stok;
+                $movementName = $existing->nama_bahan;
+                $movementType = $difference > 0 ? 'penyesuaian_masuk' : 'penyesuaian_keluar';
+            }
+
+            if ($difference !== 0) {
+                $this->stockLedger->record(
+                    null,
+                    $movementName,
+                    $movementType,
+                    abs($difference),
+                    (int) $request->user()->getKey(),
+                    'kemasan',
+                    $savedId,
+                );
+            }
+        });
+
+        return redirect()->route('admin.stock.index')->with('status', 'Stok bahan baku berhasil disimpan.');
     }
 
     public function report(): StreamedResponse

@@ -145,6 +145,59 @@ class AdminWorkflowTest extends TestCase
             ->assertSessionHasErrors('stok');
     }
 
+    public function test_admin_can_manage_ingredient_stock_and_preserve_its_history(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $this->actingAs($admin);
+
+        $this->get(route('admin.stock.index'))
+            ->assertOk()
+            ->assertSee('Biji Kopi')
+            ->assertSee('5 kg')
+            ->assertSee('Creamer Latte')
+            ->assertSee('1 kg');
+
+        $this->post(route('admin.stock.ingredients.store'), [
+            'nama_bahan' => 'Sirup Vanilla',
+            'ukuran' => '750 ml',
+            'stok' => 4,
+        ])->assertRedirect(route('admin.stock.index'));
+
+        $ingredientId = (int) DB::table('bahan_baku')->where('nama_bahan', 'Sirup Vanilla')->value('id_bahan');
+        $this->assertDatabaseHas('riwayat_stok', [
+            'id_bahan' => $ingredientId,
+            'nama_bahan' => 'Sirup Vanilla',
+            'tipe_pergerakan' => 'stok_awal',
+            'jumlah' => 4,
+            'satuan' => 'kemasan',
+            'id_admin' => $admin->id,
+        ]);
+
+        $this->put(route('admin.stock.ingredients.update', $ingredientId), [
+            'nama_bahan' => 'Sirup Vanilla',
+            'ukuran' => '750 ml',
+            'stok' => 7,
+        ])->assertRedirect(route('admin.stock.index'));
+
+        $this->assertDatabaseHas('bahan_baku', ['id_bahan' => $ingredientId, 'stok' => 7]);
+        $this->assertDatabaseHas('riwayat_stok', [
+            'id_bahan' => $ingredientId,
+            'tipe_pergerakan' => 'penyesuaian_masuk',
+            'jumlah' => 3,
+        ]);
+
+        $this->delete(route('admin.stock.ingredients.destroy', $ingredientId))
+            ->assertRedirect(route('admin.stock.index'));
+
+        $this->assertDatabaseMissing('bahan_baku', ['id_bahan' => $ingredientId]);
+        $this->assertDatabaseHas('riwayat_stok', [
+            'nama_bahan' => 'Sirup Vanilla',
+            'tipe_pergerakan' => 'penyesuaian_keluar',
+            'jumlah' => 7,
+            'id_bahan' => null,
+        ]);
+    }
+
     public function test_products_with_active_orders_cannot_be_deleted_before_the_order_finishes(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);

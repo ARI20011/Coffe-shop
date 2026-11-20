@@ -4026,6 +4026,20 @@ button {
     font: inherit;
 }
 
+.staff-stock-input {
+    width: 110px;
+    min-height: 36px;
+    margin-right: 0.35rem;
+    padding: 0.4rem;
+    border: 1px solid #8eb69b;
+    border-radius: 0.45rem;
+    font: inherit;
+}
+
+.staff-stock-input--name {
+    width: 160px;
+}
+
 .staff-stock-level {
     display: inline-flex;
     min-width: 2rem;
