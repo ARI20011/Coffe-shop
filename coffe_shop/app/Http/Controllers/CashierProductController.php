@@ -2,47 +2,113 @@
 
 namespace App\Http\Controllers;
 
-use App\Support\SalesPeriod;
+use App\Support\StockLedger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\View\View;
 
 class CashierProductController extends Controller
 {
+    public function __construct(private readonly StockLedger $stockLedger) {}
+
+    public function index(Request $request): View
+    {
+        $filters = $request->validate([
+            'q' => ['nullable', 'string', 'max:150'],
+            'kategori' => ['nullable', 'string', 'max:100'],
+        ]);
+        $products = DB::table('produk')
+            ->leftJoin('kategori', 'kategori.id_kategori', '=', 'produk.id_kategori');
+        if (($filters['q'] ?? '') !== '') {
+            $products->where('produk.nama_produk', 'like', '%'.$filters['q'].'%');
+        }
+        if (($filters['kategori'] ?? '') !== '') {
+            $products->where('kategori.nama_kategori', $filters['kategori']);
+        }
+
+        return view('dashboard.products', [
+            'products' => $products
+                ->select('produk.*', 'kategori.nama_kategori')
+                ->orderBy('produk.nama_produk')
+                ->paginate(10, ['produk.*', 'kategori.nama_kategori'], 'products_page')
+                ->withQueryString(),
+            'categories' => DB::table('kategori')->orderBy('nama_kategori')->pluck('nama_kategori'),
+            'filters' => $filters,
+        ]);
+    }
+
     public function store(Request $request): RedirectResponse
     {
         $product = $this->validatedProduct($request);
-        $now = now();
 
-        DB::table('produk')->insert([
-            ...$this->productColumns($product),
-            'created_at' => $now,
-            'updated_at' => $now,
-        ]);
+        DB::transaction(function () use ($request, $product): void {
+            $now = now();
+            $productId = DB::table('produk')->insertGetId([
+                ...$this->productColumns($product),
+                'created_at' => $now,
+                'updated_at' => $now,
+            ], 'id_produk');
+            if ($product['stok'] > 0) {
+                $this->stockLedger->record(
+                    (int) $productId,
+                    $product['nama_produk'],
+                    'stok_awal',
+                    $product['stok'],
+                    (int) $request->user()->getKey(),
+                );
+            }
+        });
 
-        return $this->dashboard()->with('status', 'Produk berhasil ditambahkan.');
+        return redirect()->route('cashier.products.index')->with('status', 'Produk berhasil ditambahkan.');
     }
 
     public function update(Request $request, int $productId): RedirectResponse
     {
-        abort_unless(DB::table('produk')->where('id_produk', $productId)->exists(), 404);
-
         $product = $this->validatedProduct($request);
-        DB::table('produk')->where('id_produk', $productId)->update([
-            ...$this->productColumns($product),
-            'updated_at' => now(),
-        ]);
+        DB::transaction(function () use ($request, $productId, $product): void {
+            $existing = DB::table('produk')
+                ->where('id_produk', $productId)
+                ->lockForUpdate()
+                ->first(['nama_produk', 'stok']);
+            abort_if($existing === null, 404);
 
-        return $this->dashboard()->with('status', 'Produk berhasil diperbarui.');
+            DB::table('produk')->where('id_produk', $productId)->update([
+                ...$this->productColumns($product),
+                'updated_at' => now(),
+            ]);
+            $difference = $product['stok'] - (int) $existing->stok;
+            if ($difference !== 0) {
+                $this->stockLedger->record(
+                    $productId,
+                    $product['nama_produk'],
+                    $difference > 0 ? 'penyesuaian_masuk' : 'penyesuaian_keluar',
+                    abs($difference),
+                    (int) $request->user()->getKey(),
+                );
+            }
+        });
+
+        return redirect()->route('cashier.products.index')->with('status', 'Produk berhasil diperbarui.');
     }
 
     public function destroy(int $productId): RedirectResponse
     {
         abort_unless(DB::table('produk')->where('id_produk', $productId)->exists(), 404);
 
+        if (DB::table('detail_transaksi')
+            ->join('transaksi', 'transaksi.id_transaksi', '=', 'detail_transaksi.id_transaksi')
+            ->where('detail_transaksi.id_produk', $productId)
+            ->whereIn('transaksi.status_pesanan', ['paid', 'shipped'])
+            ->exists()) {
+            return back()->withErrors([
+                'product' => 'Produk tidak dapat dihapus selama masih ada pesanan aktif. Selesaikan atau batalkan pesanan dahulu.',
+            ]);
+        }
+
         DB::table('produk')->where('id_produk', $productId)->delete();
 
-        return $this->dashboard()->with('status', 'Produk berhasil dihapus.');
+        return redirect()->route('cashier.products.index')->with('status', 'Produk berhasil dihapus.');
     }
 
     /**
@@ -55,7 +121,7 @@ class CashierProductController extends Controller
             'kategori' => ['nullable', 'string', 'max:100'],
             'deskripsi' => ['nullable', 'string', 'max:5000'],
             'harga' => ['required', 'integer', 'min:0'],
-            'stok' => ['required', 'integer', 'min:0'],
+            'stok' => ['required', 'integer', 'min:0', 'max:1000000'],
             'gambar' => ['nullable', 'string', 'max:2048'],
         ]);
     }
@@ -88,15 +154,5 @@ class CashierProductController extends Controller
             'stok' => $product['stok'],
             'gambar' => $product['gambar'] ?? null,
         ];
-    }
-
-    private function dashboard(): RedirectResponse
-    {
-        $period = request('periode', 'bulan');
-        if (! array_key_exists($period, SalesPeriod::OPTIONS)) {
-            $period = 'bulan';
-        }
-
-        return redirect()->route('dashboard.index', ['page' => 'kasir', 'periode' => $period]);
     }
 }

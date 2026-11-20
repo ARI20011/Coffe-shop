@@ -39,6 +39,7 @@
 
                 <form method="POST" action="{{ route('register.store') }}" class="auth-form">
                     @csrf
+                    <input type="hidden" name="referral_code" value="{{ old('referral_code', request()->query('ref')) }}">
                     <label for="name">Nama lengkap</label>
                     <input id="name" name="name" type="text" value="{{ old('name') }}" placeholder="Nama kamu" autocomplete="name" required autofocus>
                     @error('name')

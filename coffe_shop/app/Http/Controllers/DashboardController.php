@@ -6,6 +6,7 @@ use App\Support\SalesPeriod;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -13,36 +14,42 @@ class DashboardController extends Controller
 {
     private const SALES_STATUSES = ['paid', 'shipped', 'completed'];
 
-    private const STATUS_TRANSITIONS = [
-        'menunggu' => ['paid', 'cancelled'],
-        'paid' => ['shipped', 'cancelled'],
-        'shipped' => ['completed'],
-        'completed' => [],
-        'cancelled' => [],
-    ];
-
-    private const STATUS_LABELS = [
-        'menunggu' => 'Menunggu pembayaran',
-        'paid' => 'Paid',
-        'shipped' => 'Shipped',
-        'completed' => 'Completed',
-        'cancelled' => 'Cancelled',
-    ];
-
     public function index(Request $request): View|RedirectResponse
     {
-        $user = $request->user();
-        abort_unless(in_array($user?->role, ['admin', 'kasir'], true), 403);
+        URL::forceRootUrl($request->getSchemeAndHttpHost());
 
-        $page = $user->role;
-        if ($request->query('page') === null) {
-            return redirect()->route('dashboard.index', ['page' => $page]);
+        $user = $request->user();
+        $requestedPage = $request->query('page', 'home');
+
+        if ($user !== null
+            && in_array($user->role, ['admin', 'kasir'], true)
+            && in_array($requestedPage, ['home', 'menu'], true)) {
+            return redirect()->route('dashboard.index', ['page' => $user->role]);
         }
 
-        abort_unless($request->query('page') === $page, 403);
+        if (in_array($requestedPage, ['home', 'menu'], true)) {
+            return app(CatalogController::class)->index($request);
+        }
+
+        if (! in_array($requestedPage, ['admin', 'kasir'], true)) {
+            abort(404);
+        }
+
+        if ($user === null) {
+            return redirect()->route('admin.login');
+        }
+
+        $page = $user->role;
+        abort_unless(in_array($page, ['admin', 'kasir'], true) && $requestedPage === $page, 403);
 
         if ($page === 'admin') {
-            return view('dashboard.admin', ['user' => $user]);
+            return view('dashboard.admin', [
+                'user' => $user,
+                'customerCount' => DB::table('users')->where('role', 'pelanggan')->count(),
+                'productCount' => DB::table('produk')->count(),
+                'lowStockCount' => DB::table('produk')->where('stok', '<=', 5)->count(),
+                'openOrderCount' => DB::table('transaksi')->whereIn('status_pesanan', ['paid', 'shipped'])->count(),
+            ]);
         }
 
         $validated = $request->validate([
@@ -54,7 +61,15 @@ class DashboardController extends Controller
         $orders = DB::table('transaksi')->whereBetween('tanggal_transaksi', [$start, $end]);
         $completedOrders = (clone $orders)->whereIn('status_pesanan', self::SALES_STATUSES);
         $orderCount = (clone $completedOrders)->count();
-        $revenue = (clone $completedOrders)->sum('total_harga');
+        $walletRevenue = (clone $completedOrders)
+            ->where('metode_pembayaran', 'saldo_coffee_shop')
+            ->sum('total_harga');
+        $otherRevenue = (clone $completedOrders)
+            ->where(function ($query): void {
+                $query->whereNull('metode_pembayaran')
+                    ->orWhere('metode_pembayaran', '!=', 'saldo_coffee_shop');
+            })
+            ->sum('total_harga');
 
         $itemsSold = DB::table('detail_transaksi as details')
             ->join('transaksi', 'transaksi.id_transaksi', '=', 'details.id_transaksi')
@@ -88,33 +103,16 @@ class DashboardController extends Controller
             'persentase' => (int) round(($item['terjual'] / $maxSold) * 100),
         ]);
 
-        $products = DB::table('produk')
-            ->leftJoin('kategori', 'kategori.id_kategori', '=', 'produk.id_kategori')
-            ->select('produk.*', 'kategori.nama_kategori')
-            ->orderBy('produk.nama_produk')
-            ->get();
-
-        $transactions = DB::table('transaksi')
-            ->join('users', 'users.id', '=', 'transaksi.id_pelanggan')
-            ->whereBetween('transaksi.tanggal_transaksi', [$start, $end])
-            ->select('transaksi.*', 'users.username')
-            ->orderByDesc('transaksi.tanggal_transaksi')
-            ->limit(50)
-            ->get();
-
         return view('dashboard.cashier', [
             'user' => $user,
             'period' => $period,
             'periodOptions' => SalesPeriod::OPTIONS,
             'orderCount' => $orderCount,
-            'revenue' => $revenue,
+            'walletRevenue' => $walletRevenue,
+            'otherRevenue' => $otherRevenue,
             'popularItem' => $popularItem,
             'leastPurchasedItem' => $leastPurchasedItem,
             'chartItems' => $chartItems,
-            'products' => $products,
-            'transactions' => $transactions,
-            'statusLabels' => self::STATUS_LABELS,
-            'statusTransitions' => self::STATUS_TRANSITIONS,
         ]);
     }
 }

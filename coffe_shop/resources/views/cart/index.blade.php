@@ -28,10 +28,18 @@
         @if (count($items) > 0)
             <section class="cart-page-list" aria-label="Daftar pesanan">
                 @foreach ($items as $item)
+                    @php
+                        $photoUrl = $item['foto_url'];
+                        if (str_starts_with($photoUrl, 'resources/')) {
+                            $photoUrl = Vite::asset($photoUrl);
+                        } elseif (! str_starts_with($photoUrl, 'https://') && ! str_starts_with($photoUrl, 'http://')) {
+                            $photoUrl = asset($photoUrl);
+                        }
+                    @endphp
                     <article class="cart-page-item">
                         <div class="cart-page-item__photo">
                             <img
-                                src="{{ $item['id_menu'] === 1 ? Vite::asset('resources/img/coffee-cup.png') : $item['foto_url'] }}"
+                                src="{{ $photoUrl }}"
                                 alt="{{ $item['nama_menu'] }}"
                             >
                         </div>
@@ -73,8 +81,8 @@
                 </div>
                 <div class="cart-page-actions">
                     <a class="button button--profile-outline" href="{{ route('catalog.index') }}#menu">Lanjut belanja</a>
-                    <form method="POST" action="{{ route('cart.checkout') }}">
-                        @csrf
+                    <form method="GET" action="{{ route('checkout.show') }}">
+                        <input type="hidden" name="order_type" value="takeaway">
                         <button class="button button--brown" type="submit">Checkout</button>
                     </form>
                 </div>

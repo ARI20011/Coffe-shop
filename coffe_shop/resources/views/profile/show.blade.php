@@ -35,19 +35,25 @@
                     <div><dt>Username</dt><dd>{{ $user->username ?: $user->name }}</dd></div>
                     <div><dt>Email</dt><dd>{{ $user->email }}</dd></div>
                     <div><dt>Role</dt><dd>{{ ucfirst($user->role) }}</dd></div>
+                    <div><dt>Saldo Coffee Shop</dt><dd>Rp {{ number_format($user->saldo ?? 0, 0, ',', '.') }}</dd></div>
                     <div>
                         <dt>Login terakhir</dt>
                         <dd>{{ $user->last_login_at?->format('d M Y, H:i') ?? 'Belum pernah login' }}</dd>
                     </div>
                 </dl>
-                <span>Bergabung sejak {{ $user->created_at->format('d M Y') }}</span>
+                <span>Bergabung sejak {{ $user->created_at?->format('d M Y') ?? 'Tanggal tidak tersedia' }}</span>
             </div>
-            <a class="button button--profile-outline" href="{{ route('cart.index') }}">Lihat keranjang</a>
+            <div class="profile-card__actions">
+                @if ($user->role === 'pelanggan')
+                    <a class="button button--brown" href="{{ route('topup.index') }}">Top up saldo</a>
+                @endif
+                <a class="button button--profile-outline" href="{{ route('cart.index') }}">Lihat keranjang</a>
+            </div>
         </section>
 
         <section class="profile-history" aria-labelledby="profile-history-title">
             <div class="profile-history__heading">
-                <p class="eyebrow">Pesanan tersimpan</p>
+                <p class="eyebrow">Pesanan tersimpan selama 30 hari</p>
                 <h2 id="profile-history-title">Riwayat checkout</h2>
             </div>
             @forelse ($transactions as $transaction)
@@ -61,6 +67,16 @@
                         </div>
                         <span class="profile-order__status">{{ ucfirst($transaction->status_pesanan) }}</span>
                     </header>
+                    <p class="profile-order__meta">
+                        {{ $transaction->id_meja ? 'Dine-in' : 'Take-away' }}
+                        · {{ strtoupper(str_replace('_', ' ', $transaction->metode_pembayaran ?? '—')) }}
+                        · Pembayaran {{ ucfirst($transaction->status_pembayaran ?? 'menunggu') }}
+                        @if ($transaction->id_meja)
+                            · Tiba {{ $transaction->waktu_tiba ? \Illuminate\Support\Carbon::parse($transaction->waktu_tiba)->format('d M Y, H:i') : '—' }}
+                        @else
+                            · Ambil {{ $transaction->waktu_pengambilan ? \Illuminate\Support\Carbon::parse($transaction->waktu_pengambilan)->format('d M Y, H:i') : '—' }}
+                        @endif
+                    </p>
                     <ul>
                         @foreach ($detailsByTransaction->get($transaction->id_transaksi, collect()) as $detail)
                             <li>

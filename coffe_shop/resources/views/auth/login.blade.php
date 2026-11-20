@@ -52,6 +52,15 @@
                         <span class="field-error" role="alert">{{ $message }}</span>
                     @enderror
 
+                    <label class="captcha-widget" for="login-captcha">
+                        <input id="login-captcha" name="captcha" type="checkbox" value="1" required>
+                        <span>I'm not a robot</span>
+                        <span class="captcha-widget__mark" aria-hidden="true"></span>
+                    </label>
+                    @error('captcha')
+                        <span class="field-error" role="alert">{{ $message }}</span>
+                    @enderror
+
                     <div class="login-options">
                         <label class="remember-option" for="remember">
                             <input id="remember" name="remember" type="checkbox" value="1">

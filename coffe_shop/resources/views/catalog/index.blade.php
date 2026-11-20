@@ -20,8 +20,8 @@
                 Dibuat sepenuh hati, dari biji pertama sampai tegukan terakhir.
             </p>
             <div class="hero__actions">
-                <a class="button button--cream" href="#menu">Pesan Sekarang <span aria-hidden="true">→</span></a>
-                <a class="button button--outline" href="#menu">Lihat Menu</a>
+                <a class="button button--cream" href="{{ route('dashboard.index', ['page' => 'menu']) }}">Pesan Sekarang <span aria-hidden="true">→</span></a>
+                <a class="button button--outline" href="{{ route('dashboard.index', ['page' => 'menu']) }}">Lihat Menu</a>
             </div>
             <div class="hero__stats" aria-label="Keunggulan Kopi Kala Aira">
                 <div><strong>100%</strong><span>Biji pilihan Nusantara</span></div>
@@ -41,63 +41,21 @@
 
     <section class="menu-section section-wrap" id="menu">
         <div class="section-heading">
-            <p class="eyebrow">Menu favorit pelanggan</p>
+            <p class="eyebrow">{{ $bestSellerIds === [] ? 'Menu pilihan' : 'Menu terlaris pelanggan' }}</p>
             <h2>Popular Brews <em>&amp; Bites</em></h2>
-            <p>Diracik dengan teliti, disajikan dengan hangat. Temukan favoritmu di sini.</p>
+            <p>Menu yang paling banyak dipesan, diracik segar untuk menemani harimu.</p>
         </div>
 
         <nav class="category-nav" aria-label="Kategori menu">
-            @foreach (['Semua', 'Kopi', 'Non-Kopi', 'Camilan'] as $namaKategori)
-                <a href="{{ route('catalog.index', ['kategori' => $namaKategori]) }}#menu"
+            @foreach (array_merge(['Semua'], $categories) as $namaKategori)
+                <a href="{{ route('dashboard.index', ['page' => 'home', 'kategori' => $namaKategori]) }}#menu"
                     @class(['category-link', 'is-active' => $kategoriAktif === $namaKategori])>
                     {{ $namaKategori }}
                 </a>
             @endforeach
         </nav>
 
-        <div class="menu-grid">
-            @forelse ($menu as $item)
-                <article class="menu-card">
-                    <div @class(['menu-card__photo', 'menu-card__photo--feature' => $item['id_menu'] === 1])>
-                        <img
-                            src="{{ $item['id_menu'] === 1 ? Vite::asset('resources/img/coffee-cup.png') : $item['foto_url'] }}"
-                            alt="{{ $item['nama_menu'] }}"
-                            loading="lazy"
-                            class="{{ $item['stok_realtime'] === 0 ? 'is-sold-out' : '' }}"
-                        >
-                        <span class="menu-card__tag">{{ $item['kategori'] }}</span>
-                        @if ($item['stok_realtime'] === 0)
-                            <span class="stock-badge stock-badge--empty">Habis</span>
-                        @elseif ($item['stok_realtime'] <= 5)
-                            <span class="stock-badge">Stok menipis</span>
-                        @endif
-                    </div>
-                    <div class="menu-card__body">
-                        <div>
-                            <p class="menu-card__category">{{ $item['kategori'] }} <span aria-hidden="true">·</span> Favorit</p>
-                            <h3>{{ $item['nama_menu'] }}</h3>
-                            <p class="menu-card__price">Rp {{ number_format($item['harga'], 0, ',', '.') }}</p>
-                        </div>
-                        <form method="POST" action="{{ route('cart.store') }}">
-                            @csrf
-                            <input type="hidden" name="menu_id" value="{{ $item['id_menu'] }}">
-                            <button
-                                type="submit"
-                                class="add-button"
-                                aria-label="Tambah {{ $item['nama_menu'] }} ke keranjang"
-                                @guest onclick="alert('login dulu'); window.location.href = '{{ route('login', ['next' => 'home']) }}'; return false;" @endguest
-                                @disabled($item['stok_realtime'] === 0)
-                            ><span aria-hidden="true">+</span></button>
-                        </form>
-                    </div>
-                </article>
-            @empty
-                <div class="menu-empty">
-                    <strong>Menu belum tersedia</strong>
-                    <p>Belum ada menu di kategori ini. Coba pilih kategori lainnya.</p>
-                </div>
-            @endforelse
-        </div>
+        @include('catalog.partials.menu-grid')
 
     </section>
 
@@ -115,7 +73,7 @@
                 <h2>Menghadirkan sensasi ngopi terbaik, <em>langsung ke meja Anda.</em></h2>
                 <p class="about-copy__lead">Kami percaya kopi yang luar biasa bukan hanya soal kafein, melainkan jeda berharga di tengah hari yang sibuk dan cerita yang tercipta di setiap tegukan.</p>
                 <ol class="benefit-list">
-                    <li><span>01</span><div><h3>100% biji pilihan petani Nusantara</h3><p>Bekerja sama langsung dengan petani dari Aceh Gayo, Toraja, hingga Bajawa Flores secara fair-trade.</p></div></li>
+                    <li><span>01</span><div><h3>100% biji pilihan petani Nusantara</h3><p>Bekerja sama dengan petani kopi dari Ende, Flores, dan berbagai daerah Nusantara.</p></div></li>
                     <li><span>02</span><div><h3>Pemesanan kilat &amp; tanpa antre</h3><p>Pesan langsung dari gawaimu untuk pick-up di outlet atau antar ke tempatmu.</p></div></li>
                     <li><span>03</span><div><h3>Kemasan ramah lingkungan</h3><p>Semua cup take-away dan sedotan berbahan dasar serat jagung yang terurai secara alami.</p></div></li>
                 </ol>
@@ -123,22 +81,24 @@
         </div>
     </section>
 
-    <section class="promo-section" id="promo">
-        <div class="promo-card">
-            <div>
-                <p class="promo-label">Khusus pelanggan baru</p>
-                <h2>Dapatkan diskon 30% untuk<br class="desktop-break"> pesanan pertamamu!</h2>
-                <p>Gunakan kode voucher <strong>KALA30</strong> saat checkout di aplikasi atau web.</p>
+    @if ($showPromo)
+        <section class="promo-section" id="promo">
+            <div class="promo-card">
+                <div>
+                    <p class="promo-label">Voucher sambutan · tersisa {{ $promoClaimsLeft }} dari 15</p>
+                    <h2>Diskon 30% untuk pesanan dine-in</h2>
+                    <p>Masukkan kode <strong>KALA30</strong> di halaman voucher. Berlaku untuk dine-in minimal 3 produk, selama kuota tersedia.</p>
+                </div>
+                <a class="button button--gold" href="{{ route('vouchers.index') }}">Klaim Voucher <span aria-hidden="true">→</span></a>
             </div>
-            <a class="button button--gold" href="#menu">Klaim Voucher Sekarang <span aria-hidden="true">→</span></a>
-        </div>
-    </section>
+        </section>
+    @endif
 </main>
 
 <footer class="site-footer" id="footer">
     <div class="site-footer__inner">
         <div class="footer-brand">
-            <a href="#home" class="brand">
+            <a href="{{ route('dashboard.index', ['page' => 'home']) }}" class="brand">
                 <span class="brand__mark" aria-hidden="true">K</span>
                 <span class="brand__name">Kopi Kala Aira</span>
             </a>
@@ -153,7 +113,7 @@
         </div>
         <div class="footer-column">
             <h2>Lokasi kedai</h2>
-            <p>Jl. Senopati Raya No. 42, Kebayoran Baru, Jakarta Selatan, 12190</p>
+            <p>Ende, Nusa Tenggara Timur, Indonesia</p>
             <p>WhatsApp Hotline: <a href="tel:+6281234567890">+62 812-3456-7890</a></p>
         </div>
         <div class="footer-column">

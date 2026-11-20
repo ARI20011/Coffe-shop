@@ -10,17 +10,18 @@
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 <body>
+    @php($activePage = request()->query('page', 'home'))
     <header class="site-header">
         <div class="site-header__inner">
-            <a href="{{ route('catalog.index') }}" class="brand" aria-label="Kopi Kala Aira, beranda">
+            <a href="{{ route('dashboard.index', ['page' => 'home']) }}" class="brand" aria-label="Kopi Kala Aira, beranda">
                 <span class="brand__mark" aria-hidden="true">K</span>
                 <span class="brand__name">Kopi Kala Aira<small>ARTISAN ROASTERY</small></span>
             </a>
             <nav class="site-nav" aria-label="Navigasi utama">
-                <a href="{{ route('catalog.index') }}#home">Home</a>
-                <a href="{{ route('catalog.index') }}#menu">Menu</a>
-                <a href="{{ route('catalog.index') }}#about">Tentang Kami</a>
-                <a href="{{ route('catalog.index') }}#promo">Promo Spesial</a>
+                <a href="{{ route('dashboard.index', ['page' => 'home']) }}" @if ($activePage === 'home') aria-current="page" @endif>Home</a>
+                <a href="{{ route('dashboard.index', ['page' => 'menu']) }}" @if ($activePage === 'menu') aria-current="page" @endif>Menu</a>
+                <a href="{{ route('about.index') }}" @if (request()->routeIs('about.index')) aria-current="page" @endif>Tentang Kami</a>
+                <a href="{{ route('vouchers.index') }}" @if (request()->routeIs('vouchers.*')) aria-current="page" @endif>Voucher</a>
             </nav>
             <div class="header-actions">
                 <a class="header-cart" href="{{ route('cart.index') }}" aria-label="Keranjang, {{ array_sum(session('cart', [])) }} item">
@@ -38,7 +39,7 @@
                     </span>
                     <span class="header-profile__name">{{ auth()->user()?->name ?? 'Guest' }}</span>
                 </a>
-                <a class="header-contact" href="{{ route('catalog.index') }}#footer">Kontak <span aria-hidden="true">↗</span></a>
+                <a class="header-contact" href="{{ route('dashboard.index', ['page' => 'home']) }}#footer">Kontak <span aria-hidden="true">↗</span></a>
             </div>
         </div>
     </header>
